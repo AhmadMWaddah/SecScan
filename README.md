@@ -1,3 +1,5 @@
+![SecScan](https://github.com/AhmadMWaddah/SecScan/blob/master/SecScan.png)
+
 # SecScan
 
 Security scanner for Ubuntu — runs rootkit checks and makes sense of the results.
