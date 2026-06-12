@@ -1,0 +1,28 @@
+# Logs
+logs/
+*.log
+
+# AI-generated files
+.opencode/
+.sisyphus/
+.ai-context/
+*.ai.md
+AGENTS.md
+.cursor/
+.cursorrules
+.github/copilot-instructions.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.backup.*
+*.bak
