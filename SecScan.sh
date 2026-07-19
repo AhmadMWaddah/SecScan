@@ -105,7 +105,7 @@ main() {
 if [[ "${1:-}" == "help" || "${1:-}" == "-h" ]]; then
     init_colors
     echo " "
-    echo "Usage: ./SecScans.sh"
+    echo "Usage: ./SecScan.sh"
     echo " "
     echo "This script runs all security scan tasks automatically:"
     echo "  1. rkhunter — rootkit and malware scan"

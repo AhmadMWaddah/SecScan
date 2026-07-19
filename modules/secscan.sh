@@ -56,6 +56,15 @@ secscan_run_rkhunter() {
         # Skip empty lines
         [[ -z "$line" ]] && continue
         
+        # /dev/shm/PostgreSQL: System should never create files here
+        if echo "$line" | grep -qE "^/dev/shm/PostgreSQL"; then
+            echo "${RED}${BOLD}[CRITICAL]${RESET} $line"
+            echo "         → System compromised: PostgreSQL creating files in tmpfs"
+            state_add_finding "CRITICAL" "rkhunter: suspicious PostgreSQL file in /dev/shm/" "Investigate immediately - PostgreSQL shouldn't create /dev/shm/ files"
+            ((critical_count++))
+            continue
+        fi
+        
         # File property changes — expected after system updates
         if echo "$line" | grep -q "The file properties have changed:"; then
             echo "${YELLOW}${BOLD}[WARNING]${RESET} $line"
@@ -149,6 +158,14 @@ secscan_run_chkrootkit() {
         # Skip empty lines and RTNETLINK errors
         [[ -z "$line" ]] && continue
         echo "$line" | grep -q "^RTNETLINK" && continue
+        
+        # /dev/shm/PostgreSQL: High security risk - should never happen
+        if echo "$line" | grep -qE "^/dev/shm/PostgreSQL"; then
+            echo "${RED}${BOLD}[CRITICAL]${RESET} $line"
+            echo "         → System compromised: PostgreSQL creating files in tmpfs"
+            state_add_finding "CRITICAL" "chkrootkit: suspicious PostgreSQL file in /dev/shm/" "Investigate immediately - PostgreSQL shouldn't create /dev/shm/ files"
+            ((critical_count++))
+            continue
         
         # Filter out chkrootkit header lines (not actual findings)
         if echo "$line" | grep -qE "^WARNING: (The following suspicious|Output from|output from)"; then
