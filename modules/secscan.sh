@@ -166,6 +166,7 @@ secscan_run_chkrootkit() {
             state_add_finding "CRITICAL" "chkrootkit: suspicious PostgreSQL file in /dev/shm/" "Investigate immediately - PostgreSQL shouldn't create /dev/shm/ files"
             ((critical_count++))
             continue
+        fi
         
         # Filter out chkrootkit header lines (not actual findings)
         if echo "$line" | grep -qE "^WARNING: (The following suspicious|Output from|output from)"; then
