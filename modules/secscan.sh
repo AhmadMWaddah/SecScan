@@ -30,6 +30,22 @@ secscan_prepare_log() {
     echo "$log_file"
 }
 
+# 0 = PostgreSQL running (shared memory in /dev/shm/ is legitimate), 1 = not running
+is_postgres_running() {
+    if command -v pgrep &>/dev/null && pgrep -x postgres &>/dev/null; then
+        return 0
+    fi
+
+    local pidfile
+    for pidfile in /var/lib/postgresql/*/main/postmaster.pid; do
+        if [[ -f "$pidfile" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 secscan_run_rkhunter() {
     print_header "RKHUNTER — ROOTKIT SCAN"
 
@@ -58,10 +74,32 @@ secscan_run_rkhunter() {
         
         # /dev/shm/PostgreSQL: System should never create files here
         if echo "$line" | grep -qE "^/dev/shm/PostgreSQL"; then
-            echo "${RED}${BOLD}[CRITICAL]${RESET} $line"
-            echo "         → System compromised: PostgreSQL creating files in tmpfs"
-            state_add_finding "CRITICAL" "rkhunter: suspicious PostgreSQL file in /dev/shm/" "Investigate immediately - PostgreSQL shouldn't create /dev/shm/ files"
-            ((critical_count++))
+            if is_postgres_running; then
+                echo "${CYAN}${BOLD}[INFO]${RESET} $line"
+                echo "         → Legitimate PostgreSQL shared memory (active PostgreSQL) — no action needed"
+                state_add_finding "INFO" "rkhunter: PostgreSQL shared memory in /dev/shm/" "Expected while PostgreSQL is running"
+                ((info_count++))
+            else
+                echo "${RED}${BOLD}[CRITICAL]${RESET} $line"
+                echo "         → System compromised: PostgreSQL creating files in tmpfs"
+                state_add_finding "CRITICAL" "rkhunter: suspicious PostgreSQL file in /dev/shm/" "Investigate immediately - PostgreSQL shouldn't create /dev/shm/ files"
+                ((critical_count++))
+            fi
+            continue
+        fi
+        
+        # rkhunter indents files under "Suspicious file types found in /dev:" — PostgreSQL uses /dev/shm/ for shared memory
+        if echo "$line" | grep -qE "Suspicious file types found in /dev:" || echo "$line" | grep -qE "^\s+/dev/shm/PostgreSQL"; then
+            if is_postgres_running; then
+                echo "${CYAN}${BOLD}[INFO]${RESET} $line"
+                echo "         → Likely PostgreSQL shared memory — no action needed"
+                state_add_finding "INFO" "rkhunter: suspicious file types in /dev (PostgreSQL)" "Expected while PostgreSQL is running"
+                ((info_count++))
+            else
+                echo "${YELLOW}${BOLD}[WARNING]${RESET} $line"
+                state_add_finding "WARNING" "rkhunter: suspicious file types in /dev" "Review manually"
+                ((warning_count++))
+            fi
             continue
         fi
         
@@ -161,10 +199,17 @@ secscan_run_chkrootkit() {
         
         # /dev/shm/PostgreSQL: High security risk - should never happen
         if echo "$line" | grep -qE "^/dev/shm/PostgreSQL"; then
-            echo "${RED}${BOLD}[CRITICAL]${RESET} $line"
-            echo "         → System compromised: PostgreSQL creating files in tmpfs"
-            state_add_finding "CRITICAL" "chkrootkit: suspicious PostgreSQL file in /dev/shm/" "Investigate immediately - PostgreSQL shouldn't create /dev/shm/ files"
-            ((critical_count++))
+            if is_postgres_running; then
+                echo "${CYAN}${BOLD}[INFO]${RESET} $line"
+                echo "         → Legitimate PostgreSQL shared memory (active PostgreSQL) — no action needed"
+                state_add_finding "INFO" "chkrootkit: PostgreSQL shared memory in /dev/shm/" "Expected while PostgreSQL is running"
+                ((info_count++))
+            else
+                echo "${RED}${BOLD}[CRITICAL]${RESET} $line"
+                echo "         → System compromised: PostgreSQL creating files in tmpfs"
+                state_add_finding "CRITICAL" "chkrootkit: suspicious PostgreSQL file in /dev/shm/" "Investigate immediately - PostgreSQL shouldn't create /dev/shm/ files"
+                ((critical_count++))
+            fi
             continue
         fi
         
